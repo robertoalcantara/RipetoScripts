@@ -3,6 +3,7 @@ from sortedcontainers import SortedDict
 import sys
 import numpy as np
 from itertools import islice
+import struct
 
 def closest(sorted_dict, key):
     "Return closest key in `sorted_dict` to given `key`."
@@ -119,8 +120,10 @@ MAX_IOUT = 20 #mA
 MIN_IOUT = 0
 ILSB_SIZE = 0.00575694840124388 #mA
 
-i_calc = np.arange(MIN_IOUT, MAX_IOUT, ILSB_SIZE)
-v_calc = np.polyval(coef,i_calc)
+#i_calc = np.arange(MIN_IOUT, MAX_IOUT, ILSB_SIZE)
+i_calc = np.arange(0, 4094, 1)
+i_calc = np.array(i_calc) * ILSB_SIZE
+v_calc = np.polyval(coef, i_calc )
 aux = []
 for x in v_calc: #cleanup
     if x<0:
@@ -130,15 +133,30 @@ for x in v_calc: #cleanup
 v_calc = aux
 p_calc = np.array(i_calc) * np.array(v_calc) /1000
 
-
 i_ad = []
 for i in i_calc:
     i_ad.append( int(i / ILSB_SIZE) ) 
 v_ad = []
 for v in v_calc:
     v_ad.append( int(v / VLSB_SIZE) )
+#ivcurve = SortedDict()
+#criar o arquivo do dump
+fiv = open("ivcurve.bin", 'wb')
 
+for c in xrange(0, len(i_ad) ):
+    #ivcurve[i_ad[c]] =  v_ad[v]
+    #print(str(i_ad[c]) + "," + str(v_ad[c])) 
+    i0, i1, dummy1, dummy = struct.pack("i", i_ad[c]) 
+    v0, v1, dummy2, dummy = struct.pack("i", v_ad[c])
+    fiv.write('\x0F')
+    fiv.write(i1)
+    fiv.write(i0)
+    fiv.write(v1)
+    fiv.write(v0)
+    checksum = ord(i0) + ord(i1) + ord(v0) + ord(v1)
+    fiv.write( struct.pack("i", checksum)[0] )
 
+fiv.close()
 
 '''
 fig, ax1 = plt.subplots()
