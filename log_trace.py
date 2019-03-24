@@ -70,6 +70,7 @@ while True:
             cnt = 0
         if (b == 12):
             #valido
+            print "LOGIC"
             data_logic = True
             waitingHeader = False
             #l = 0
@@ -150,6 +151,13 @@ for  cnt in range( 0, len(data) ):
 t = []
 tcnt = 0
 
+#calculo da potencia media
+p_tot=0
+for p_ins in  p:
+    p_tot=p_tot + p_ins
+p_med = p_tot / len(p)
+print "Potencia Media: " + str(p_med) + "mW"
+
 for cnt in range (0, len(p)):
     t.append(tcnt)
     tcnt = tcnt + 0.00017784 #frequencia de amostragem 
@@ -174,7 +182,7 @@ ax2.grid(True)
 ax2.plot(t, v, 'bx')
 ax2.set_xlabel('Time(s)')
 ax2.tick_params('y', colors='b')
-ax2.set_ylabel("Current (mA")
+ax2.set_ylabel("Voltage/Current (mV / mA)")
 ax2.plot(t, i, 'rx')
 fig.show()
 plt.show()

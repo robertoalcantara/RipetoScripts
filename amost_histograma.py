@@ -119,9 +119,23 @@ for d in data:
         v.append(d[0])
     if d[1]!=0:
         i.append(d[1])
-
+p = []
+for d in data:
+    p.append( (d[0] * d[1]) /1000 )
 print len(data)
 #bins_s = len(data)/1000
+
+
+
+fig2,bx1 = plt.subplots()
+bx1.grid(True)
+bx1.plot(p, 'r-')
+bx1.set_xlabel('Num Amostra')
+#bx1.tick_params('y', colors='g')
+#bx1.set_ylabel("ADC Code @ 83,28uA")
+#bx1.set_ylabel("Codigo ADC @ 83,28 uA")
+fig2.show()
+plt.show()
 
 '''
 fig2,bx1 = plt.subplots()
@@ -146,7 +160,7 @@ bx1.set_ylabel("Codigo ADC @ 2501,24 mV")
 plt.show()
 '''
 
-
+'''
 
 #%matplotlib inline
 binwidth=1
@@ -168,7 +182,7 @@ plt.ylabel('Probabilidade');
 plt.xlabel('Codigo ADC @ 2501,24 mV')
 plt.show()
 
-
+'''
 
 
 

@@ -1,4 +1,8 @@
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.collections import PolyCollection
+from matplotlib import colors as mcolors
+
 from sortedcontainers import SortedDict
 import sys
 import numpy as np
@@ -115,12 +119,12 @@ vl_calc = np.polyval(coef,il)
 pl_calc = np.array(il) * np.array(vl_calc) /1000
 
 #calcular o erro
-print "--------------------"
-err_v = np.array(vl) - np.array(vl_calc)
-err_v[0] = 0 #amostra 0 eh especial pq representa a saida a vazio
-print "Erro medio: " + str ( err_v.mean() ) + "mV"
-print "Desvio padrao erro: " + str ( err_v.std() ) + "mV"
-print "-------------------"
+#print "--------------------"
+#err_v = np.array(vl) - np.array(vl_calc)
+#err_v[0] = 0 #amostra 0 eh especial pq representa a saida a vazio
+#print "Erro medio: " + str ( err_v.mean() ) + "mV"
+#print "Desvio padrao erro: " + str ( err_v.std() ) + "mV"
+#print "-------------------"
 
 ### curva calculada:
 MAX_VOUT = 4998.9 #mV  DAC MAX 
@@ -134,29 +138,39 @@ MAX_IOUT = 20 #mA
 MIN_IOUT = 0
 ILSB_SIZE = 0.00575694840124388 #mA
 
-i_calc = np.arange(0, 4094, 1)
+LEN_SURFACE = 50
+
+i_calc = np.arange(0, 4094, 1) #aqui eh 1 !!!
 i_calc = np.array(i_calc) * ILSB_SIZE
-v_calc = np.polyval(coef, i_calc )
-aux = []
-cnt = 0
-for x in v_calc: #cleanup
-    if x<0:
-        aux.append(0)
-    else: #adiciona offset do shunt
-        v_ad = x + ( RSENSE * i_calc[cnt] )
-        aux.append(v_ad)
-    cnt = cnt + 1
 
+time_shift = []
 
-v_calc = aux
-p_calc = np.array(i_calc) * np.array(v_calc) /1000
-#calcula o codigo
-i_ad = []
-for i in i_calc:
-    i_ad.append( int(i / ILSB_SIZE) ) 
-v_ad = []
-for v in v_calc:
-    v_ad.append( int(v / VLSB_SIZE) )
+for a in range(0, LEN_SURFACE):
+        
+        coef = np.polyfit(il,vl,6) #6
+        v_calc = np.polyval(coef, i_calc )
+        aux = []
+        cnt = 0
+        for x in v_calc: #cleanup
+            if x<0:
+                aux.append(0)
+            else: #adiciona offset do shunt
+                v_ad = x + ( RSENSE * i_calc[cnt] ) #- (a*20)
+                aux.append(v_ad)
+            
+            cnt = cnt + 1
+        v_calc = aux
+        p_calc = np.array(i_calc) * np.array(v_calc) /1000
+        l = []
+        d = dict() 
+        for k in range(0,len(i_calc)):
+            d[i_calc[k]] = v_calc[k]
+        time_shift.append( d )
+
+for a in range(0, len(i_calc)):
+    print str(i_calc[a]) + "," +  str( v_calc[a])
+     
+'''
     ##teste fixo v_ad.append( 4095 )
 #ivcurve = SortedDict()
 #criar o arquivo do dump
@@ -178,7 +192,7 @@ for c in xrange(0, len(i_ad) ):
     #print "mem["+ str(i_ad[c]) + "] = " + str(v_ad[c])    
 
 fiv.close()
-
+'''
 '''
 fig, ax1 = plt.subplots()
 ax1.set_xlabel('Voltage (mV)')
@@ -196,6 +210,7 @@ ax2.grid(False)
 plt.show()
 '''
 
+'''
 fig, ax1 = plt.subplots()
 ax1.grid(True)
 ax1.plot(il,vl, 'bx')
@@ -210,10 +225,9 @@ ax2.set_ylabel('Power (mW)' )
 ax2.grid(False)
 ax2.plot(il,pl_calc, 'r-')
 fig.show()
+'''
 
-
-
-
+'''
 fig2,bx1 = plt.subplots()
 bx1.grid(True)
 bx1.plot(i_calc, v_calc, 'g-')
@@ -226,8 +240,9 @@ bx2.plot(i_calc,p_calc,'r-')
 bx2.set_ylabel("Power (mW)")
 bx2.grid(False)
 fig2.show()
+'''
 
-
+'''
 fig3,cx1 = plt.subplots()
 cx1.grid(True)
 cx1.plot(i_ad, v_ad, 'bx')
@@ -235,7 +250,55 @@ cx1.set_xlabel('Current Code')
 cx1.tick_params('y', colors='b')
 cx1.set_ylabel("Voltage Code'")
 fig3.show()
+'''
 
-
+'''
+fig4,dx1 = plt.subplots()
+dx1.grid(True)
+dx1.plot(i_calc, v_calc, 'g-')
+dx1.set_xlabel('Current (mA) Calc')
+dx1.tick_params('y', colors='g')
+dx1.set_ylabel("Voltage (mV) Calc'")
+fig4.show()
 
 plt.show()
+'''
+
+#y vai ser a corrente
+#z vai ser a tensao
+#x vai ser o tempo
+
+yg = []
+zg = []
+xg = []
+#x_cnt = 0
+#for i in time_shift:
+#    yg.append( di[0] )
+#    zg.append( i[1] )
+#    xg.append(x_cnt)
+#    x_cnt = x_cnt + 1
+'''
+def f(x, y):
+    r = []
+    indice_tempo = X[0]
+    for i in range(0, LEN_SURFACE): #indice_tempo:
+        r.append( time_shift[i].values() )
+    return r 
+
+
+y = range(0, LEN_SURFACE) #np.linspace(0, LEN_SURFACE, LEN_SURFACE) #T
+x = i_calc #np.linspace(0, 1000, 250) #I
+
+X, Y = np.meshgrid(x, y)
+Z = f(X, Y)
+
+fig = plt.figure()
+ax = plt.axes(projection='3d')
+#ax.contour3D(X, Y, Z, 50, cmap='binary')
+ax.scatter3D(X, Y, Z, c=Z, cmap='Greens');
+ax.set_xlabel('x')
+ax.set_ylabel('y')
+ax.set_zlabel('z');
+
+plt.show()
+'''

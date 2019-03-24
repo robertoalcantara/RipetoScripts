@@ -75,8 +75,8 @@ while True:
         if (cnt == 4) : 
             #checksum
             waitingHeader = True
-            v = v * 0.0008018066406 * 1000 #em mV
-            i = i * 0.000005756948401 *1000    #em mA
+            v = v * 0.0008021972656 * 1000 #em mV
+            i = i * 0.00000575337029108412 *1000    #em mA
             checksum = checksum & 255
             if (checksum == b):
                 pack = [v,i]
@@ -87,17 +87,21 @@ while True:
 
 data2 = SortedDict()
 
+conta_ocorrencia = SortedDict()
 for x in data:
     v = x[0]
     i = x[1]
     if data2.get(i)==None:
         data2[i] = v
+        conta_ocorrencia[i] = 1
     else:
-        data2[i] = (data2.get(i) + v) /2	
+        data2[i] = (data2.get(i) + v) /2
+        conta_ocorrencia[i] = conta_ocorrencia[i] + 1;	
 
 data = []
 for i, v in data2.items():
-	data.append( [v, i] )
+    if conta_ocorrencia[i] > 2: #filtro para ruidos da amostragem
+	    data.append( [v, i] )
 
 vl = []
 il = []
@@ -109,7 +113,7 @@ for i in data:
     pl.append( i[1] * i[0] / 1000 )
     # print (str(i[1]) + "," + str(i[0]))  #CSV OUTPUT Curve
 
-coef = np.polyfit(il,vl,6) #6
+coef = np.polyfit(il,vl,8) #6
 
 vl_calc = np.polyval(coef,il)
 pl_calc = np.array(il) * np.array(vl_calc) /1000
@@ -117,22 +121,22 @@ pl_calc = np.array(il) * np.array(vl_calc) /1000
 #calcular o erro
 print "--------------------"
 err_v = np.array(vl) - np.array(vl_calc)
-err_v[0] = 0 #amostra 0 eh especial pq representa a saida a vazio
+#nao necessario err_v[0] = 0 #amostra 0 eh especial pq representa a saida a vazio
 print "Erro medio: " + str ( err_v.mean() ) + "mV"
 print "Desvio padrao erro: " + str ( err_v.std() ) + "mV"
 print "-------------------"
 
 ### curva calculada:
-MAX_VOUT = 4998.9 #mV  DAC MAX 
+MAX_VOUT = 5004.5 #mV  DAC MAX 
 MIN_VOUT = 0
 VDAC_SIZE = 4096
 VLSB_SIZE = MAX_VOUT / VDAC_SIZE
 
-RSENSE = 1.05 #OHM
+RSENSE = 1.045 #OHM
 
 MAX_IOUT = 20 #mA
 MIN_IOUT = 0
-ILSB_SIZE = 0.00575694840124388 #mA
+ILSB_SIZE = 0.00575337029108412  #mA
 
 i_calc = np.arange(0, 4094, 1)
 i_calc = np.array(i_calc) * ILSB_SIZE
@@ -142,8 +146,8 @@ cnt = 0
 for x in v_calc: #cleanup
     if x<0:
         aux.append(0)
-    else: #adiciona offset do shunt
-        v_ad = x + ( RSENSE * i_calc[cnt] )
+    else: #adiciona offset do shunt - dobrado porque ele existe na captura e vai existir na reproducao
+        v_ad = x + ( RSENSE * i_calc[cnt] * 2)
         aux.append(v_ad)
     cnt = cnt + 1
 
@@ -162,7 +166,8 @@ for v in v_calc:
 #criar o arquivo do dump
 fiv = open("ivcurve.bin", 'wb')
 
-#verificar - 
+#verificar -
+print len(i_ad) 
 for c in xrange(0, len(i_ad) ):
     #ivcurve[i_ad[c]] =  v_ad[v]
     #print(str(i_ad[c]) + "," + str(v_ad[c])) 
@@ -179,22 +184,6 @@ for c in xrange(0, len(i_ad) ):
 
 fiv.close()
 
-'''
-fig, ax1 = plt.subplots()
-ax1.set_xlabel('Voltage (mV)')
-ax1.plot(vl,il, 'bx')
-ax1.tick_params('y', colors='b')
-ax1.set_ylabel("Current (mA)")
-ax1.grid(True)
-
-ax2 = ax1.twinx()
-ax2.tick_params('y', colors='r')
-ax2.plot(vl,pl, 'r.')  
-ax2.set_ylabel('Power (mW)' )
-ax2.grid(False)
-
-plt.show()
-'''
 
 fig, ax1 = plt.subplots()
 ax1.grid(True)
