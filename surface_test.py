@@ -89,6 +89,7 @@ while True:
             data.append(pack)
         cnt = cnt + 1
 
+print "LLL" + str(len(data))
 data2 = SortedDict()
 
 for x in data:

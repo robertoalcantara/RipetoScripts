@@ -84,7 +84,7 @@ while True:
             pack = [v,i]
             data.append(pack)
         cnt = cnt + 1
-
+print len(data)
 data2 = SortedDict()
 
 conta_ocorrencia = SortedDict()
@@ -100,7 +100,7 @@ for x in data:
 
 data = []
 for i, v in data2.items():
-    if conta_ocorrencia[i] > 2: #filtro para ruidos da amostragem
+    if conta_ocorrencia[i] > 1: # 2 filtro para ruidos da amostragem
 	    data.append( [v, i] )
 
 vl = []
@@ -113,7 +113,7 @@ for i in data:
     pl.append( i[1] * i[0] / 1000 )
     # print (str(i[1]) + "," + str(i[0]))  #CSV OUTPUT Curve
 
-coef = np.polyfit(il,vl,8) #6
+coef = np.polyfit(il,vl,6) #6
 
 vl_calc = np.polyval(coef,il)
 pl_calc = np.array(il) * np.array(vl_calc) /1000
@@ -122,8 +122,8 @@ pl_calc = np.array(il) * np.array(vl_calc) /1000
 print "--------------------"
 err_v = np.array(vl) - np.array(vl_calc)
 #nao necessario err_v[0] = 0 #amostra 0 eh especial pq representa a saida a vazio
-print "Erro medio: " + str ( err_v.mean() ) + "mV"
-print "Desvio padrao erro: " + str ( err_v.std() ) + "mV"
+print "V Erro medio: " + str ( err_v.mean() ) + "mV"
+print "V Desvio padrao erro: " + str ( err_v.std() ) + "mV"
 print "-------------------"
 
 ### curva calculada:
@@ -148,6 +148,7 @@ for x in v_calc: #cleanup
         aux.append(0)
     else: #adiciona offset do shunt - dobrado porque ele existe na captura e vai existir na reproducao
         v_ad = x + ( RSENSE * i_calc[cnt] * 2)
+        v_ad = v_ad + 200 # offset ajuste
         aux.append(v_ad)
     cnt = cnt + 1
 
@@ -159,28 +160,40 @@ i_ad = []
 for i in i_calc:
     i_ad.append( int(i / ILSB_SIZE) ) 
 v_ad = []
+#v_calc[0] = max(v_calc) #a tensao na corrente zero eh setada para a maxima para inciar as coisas... se a curva nao for ok colocando no +4LSB
+#v_calc[1] = max(v_calc)
+#v_calc[2] = max(v_calc)
+#v_calc[3] = max(v_calc) 
+
 for v in v_calc:
     v_ad.append( int(v / VLSB_SIZE) )
-    ##teste fixo v_ad.append( 4095 )
+    #v_ad.append(  (3 * (10)**-8 * (v)**3) - ( 8 * (10)**-5 * (v)**2) + 0.8543*v + 49.163 ) #y = 3E-08x3 - 8E-05x2 + 0,8543x + 49,163
+    #teste fixo 
+    #v_ad.append( 4090 )
+
+
 #ivcurve = SortedDict()
 #criar o arquivo do dump
 fiv = open("ivcurve.bin", 'wb')
 
 #verificar -
 print len(i_ad) 
-for c in xrange(0, len(i_ad) ):
-    #ivcurve[i_ad[c]] =  v_ad[v]
-    #print(str(i_ad[c]) + "," + str(v_ad[c])) 
-    i0, i1, dummy1, dummy = struct.pack("i", i_ad[c]) 
-    v0, v1, dummy2, dummy = struct.pack("i", v_ad[c])
-    fiv.write('\x0F')
-    fiv.write(i1)
-    fiv.write(i0)
-    fiv.write(v1)
-    fiv.write(v0)
-    checksum = ord(i0) + ord(i1) + ord(v0) + ord(v1)
-    fiv.write( struct.pack("i", checksum)[0] )
-    #print "mem["+ str(i_ad[c]) + "] = " + str(v_ad[c])    
+try:
+    for c in xrange(0, len(i_ad) ):
+        #ivcurve[i_ad[c]] =  v_ad[v]
+        #print(str(i_ad[c]) + "," + str(v_ad[c])) 
+        i0, i1, dummy1, dummy = struct.pack("i", i_ad[c]) 
+        v0, v1, dummy2, dummy = struct.pack("i", v_ad[c])
+        fiv.write('\x0F')
+        fiv.write(i1)
+        fiv.write(i0)
+        fiv.write(v1)
+        fiv.write(v0)
+        checksum = ord(i0) + ord(i1) + ord(v0) + ord(v1)
+        fiv.write( struct.pack("i", checksum)[0] )
+        #print "mem["+ str(i_ad[c]) + "] = " + str(v_ad[c])    
+except:
+    print 'Possivelmente a curva estourou, verifique'
 
 fiv.close()
 
@@ -194,26 +207,24 @@ ax1.set_ylabel("Voltage (mV)")
 ax1.plot(il, vl_calc, 'b-')
 ax2 = ax1.twinx()
 ax2.tick_params('y', colors='r')
-ax2.plot(il,pl, 'rx')
+#ax2.plot(il,pl, 'rx')
 ax2.set_ylabel('Power (mW)' )
 ax2.grid(False)
 ax2.plot(il,pl_calc, 'r-')
 fig.show()
 
 
-
-
 fig2,bx1 = plt.subplots()
 bx1.grid(True)
-bx1.plot(i_calc, v_calc, 'g-')
-bx1.set_xlabel('Current (mA) Calc')
-bx1.tick_params('y', colors='g')
-bx1.set_ylabel("Voltage (mV) Calc'")
-bx2 = bx1.twinx()
-bx2.tick_params('y', colors='r')
-bx2.plot(i_calc,p_calc,'r-')
-bx2.set_ylabel("Power (mW)")
-bx2.grid(False)
+bx1.plot(i_calc, v_calc, 'b-')
+bx1.set_xlabel('Current (mA)')
+bx1.tick_params('y', colors='b')
+bx1.set_ylabel("Voltage (mV)")
+#bx2 = bx1.twinx()
+#bx2.tick_params('y', colors='r')
+#bx2.plot(i_calc,p_calc,'r-')
+#bx2.set_ylabel("Power (mW)")
+#bx2.grid(False)
 fig2.show()
 
 

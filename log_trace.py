@@ -54,11 +54,15 @@ data_trace2 = []
 data_trace3 = []
 data_logic = False
 
+x = 0
+
 while True:
     try:
         b = ord( f.read(1) )
     except:
         break #acabou
+
+    
     if (waitingHeader):
         if (b == 10):
             #valido
@@ -141,6 +145,9 @@ while True:
                 print l
             cnt = cnt + 1
 
+        if len(data) == 35000:
+            print "INTERROMPIDO POR LIMITACAO NO CODIGO! SINCRONIA"
+            break
 p = []
 i = []
 v = []
@@ -151,6 +158,15 @@ for  cnt in range( 0, len(data) ):
 t = []
 tcnt = 0
 
+
+#calculo da corrente media
+i_tot=0
+for i_ins in  i:
+    i_tot=i_tot + i_ins
+i_med = i_tot / len(i)
+print "Corrente Media: " + str(i_med) + "mA"
+
+
 #calculo da potencia media
 p_tot=0
 for p_ins in  p:
@@ -160,7 +176,8 @@ print "Potencia Media: " + str(p_med) + "mW"
 
 for cnt in range (0, len(p)):
     t.append(tcnt)
-    tcnt = tcnt + 0.00017784 #frequencia de amostragem 
+    tcnt = tcnt + 0.00017784 #frequencia de amostragem com media de 8
+    #tcnt = tcnt + 0.00001976  #50kHz
 
 
 fig, ax1 = plt.subplots()
@@ -177,12 +194,28 @@ fig.show()
 
 
 
-fig, ax2 = plt.subplots()
+fig2, ax2 = plt.subplots()
 ax2.grid(True)
-ax2.plot(t, v, 'bx')
+#ax2.plot(t, v, 'bx')
 ax2.set_xlabel('Time(s)')
-ax2.tick_params('y', colors='b')
-ax2.set_ylabel("Voltage/Current (mV / mA)")
-ax2.plot(t, i, 'rx')
-fig.show()
+ax2.tick_params('y', colors='g')
+ax2.set_ylabel("Current (mA)")
+ax2.plot(t, i, 'gx')
+fig2.show()
+
+
+fig3, ax3 = plt.subplots()
+ax3.grid(True)
+ax3.plot(t, v, 'bx')
+ax3.set_xlabel('Time(s)')
+ax3.tick_params('y', colors='b')
+ax3.set_ylabel("Voltage (mV)")
+#ax3.plot(t, i, 'rx')
+fig3.show()
+
+
 plt.show()
+
+
+
+
