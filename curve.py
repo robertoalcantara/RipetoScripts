@@ -138,7 +138,7 @@ MAX_IOUT = 20 #mA
 MIN_IOUT = 0
 ILSB_SIZE = 0.00575337029108412  #mA
 
-i_calc = np.arange(0, 4094, 1)
+i_calc = np.arange(0, 4096, 1)
 i_calc = np.array(i_calc) * ILSB_SIZE
 v_calc = np.polyval(coef, i_calc )
 aux = []
@@ -178,6 +178,13 @@ fiv = open("ivcurve.bin", 'wb')
 
 #verificar -
 print len(i_ad) 
+#como so tem uma curva, imprimir no arquivo 2 bytes 0,1 (qtd de curvas) e 4 bytes 0 (delay entre curvas 32 bit) 0=sem delay, nao comuta
+fiv.write('\x00')
+fiv.write('\x01')
+fiv.write('\x00')
+fiv.write('\x00')
+fiv.write('\x00')
+fiv.write('\x00')
 try:
     for c in xrange(0, len(i_ad) ):
         #ivcurve[i_ad[c]] =  v_ad[v]

@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
@@ -18,8 +18,8 @@ def closest(sorted_dict, key):
 
 
 def curve_process( data ):
-
-        print len(data)
+        #print '.',
+        #print len(data)
 
         vl = []
         il = []
@@ -32,10 +32,9 @@ def curve_process( data ):
             pl.append( i[1] * i[0] / 1000 )
             # print (str(i[1]) + "," + str(i[0]))  #CSV OUTPUT Curve
         if len( il ) < 5:
-            print "Nao possui amostras suficiente"
-            return False 
+            #print "Nao possui amostras suficiente"
+            return True, np.arange(0, 4096, 1), np.arange(0, 4096, 1) 
 
-        print len(vl)
 
         coef = np.polyfit(il,vl,3) #6
 
@@ -43,12 +42,11 @@ def curve_process( data ):
         pl_calc = np.array(il) * np.array(vl_calc) /1000
 
         #calcular o erro
-        print "--------------------"
         err_v = np.array(vl) - np.array(vl_calc)
         #nao necessario err_v[0] = 0 #amostra 0 eh especial pq representa a saida a vazio
-        print "V Erro medio: " + str ( err_v.mean() ) + "mV"
-        print "V Desvio padrao erro: " + str ( err_v.std() ) + "mV"
-        print "-------------------"
+        #print "V Erro medio: " + str ( err_v.mean() ) + "mV"
+        #print "V Desvio padrao erro: " + str ( err_v.std() ) + "mV"
+        #print "-------------------"
 
         ### curva calculada:
         MAX_VOUT = 5004.5 #mV  DAC MAX
@@ -63,7 +61,7 @@ def curve_process( data ):
         #ILSB_SIZE = 0.00575337029108412  #mA
         ILSB_SIZE = 0.00000092832880672904 *1000    #em mA
 
-        i_calc = np.arange(0, 4094, 1)
+        i_calc = np.arange(0, 4096, 1)
         i_calc = np.array(i_calc) * ILSB_SIZE
         v_calc = np.polyval(coef, i_calc )
         aux = []
@@ -87,7 +85,7 @@ def curve_process( data ):
 
         for v in v_calc:
             if v > 2000:
-                return False #erro de condicionamento
+                return True, np.arange(0, 4096, 1), np.arange(0, 4096, 1) 
             v_ad.append( int(v / VLSB_SIZE) )
 
 
@@ -97,10 +95,10 @@ def curve_process( data ):
         for cnt in range (0, len(data)):
             time.append(tcnt)
             tcnt = tcnt + 0.00001976 #50.61 kHz
-        print "Numero itens na curva: " + str( len(data) )
+        #print "Numero itens na curva: " + str( len(data) )
 
-        show_graph( vl, il, pl, vl_calc, pl_calc, v_calc, i_calc, p_calc, v_ad, i_ad  )
-
+        #show_graph( vl, il, pl, vl_calc, pl_calc, v_calc, i_calc, p_calc, v_ad, i_ad  )
+        return True, v_ad, i_ad
 
 def show_graph(vl, il, pl, vl_calc,pl_calc, v_calc, i_calc, p_calc, v_ad, i_ad ):
         #fig, ax1 = plt.subplots()
@@ -152,11 +150,13 @@ def show_graph(vl, il, pl, vl_calc,pl_calc, v_calc, i_calc, p_calc, v_ad, i_ad )
 ##################################################
 # Main
 
-if len(sys.argv) < 2:
-    print "filename missing"
+if len(sys.argv) < 3:
+    print "filename and curve delay missing.  filename NNN (em pulsos de clock)"
     sys.exit()
 
 filename = sys.argv[1]
+delay_curves = sys.argv[2] 
+
 print filename
 
 f = open(filename, "r")
@@ -271,7 +271,7 @@ while True:
             cnt = cnt + 1
 
 
-print "Numero amostras: " + str(len(data))
+#print "Numero amostras: " + str(len(data))
 
 curve_idx = -1
 aux = not data_trace1[0]
@@ -285,7 +285,7 @@ for t in data_trace1:
         curve_idx = curve_idx + 1
         cnt_byte_curve = 0;
         curves.append([])
-        print "Curva " + str(curve_idx)
+        #print "Curva " + str(curve_idx)
     
     curves[curve_idx].append( data[cnt_byte] )
   
@@ -293,12 +293,67 @@ for t in data_trace1:
     cnt_byte_curve = cnt_byte_curve+1       
 
 
+print "Numero de Curvas: " + str(len(curves))
 
-#fiv = open("ivsurface.bin", 'wb')
+'''
+#CSV file of surface
+fcsv = open("ivsurface_txt.csv", 'wb')
 for k in curves:
-    ret = curve_process( k )
-    #if ret == False:
-    #    continue #verificar o que fazer aqui
+    ret, v_ad, i_ad = curve_process( k )
+    if ret == False:
+        continue #verificar o que fazer aqui
+    
+    for cnt in xrange(0,4094):
+        l = str(v_ad[cnt]) + ',' + str(i_ad[cnt])
+        if (cnt<4093):
+            l = l+','
+
+        fcsv.write(l)
+'''
+
+fiv = open("ivsurface.bin", 'wb')
+num0, num1, dummy1, dummy2 = struct.pack("i", len(curves) )
+fiv.write(num1)
+fiv.write(num0)
+
+num0, num1, num2, num3 = struct.pack("i", int(delay_curves))
+fiv.write(num3)
+fiv.write(num2)
+fiv.write(num1)
+fiv.write(num0)
+
+try:
+    for k in curves:
+        ret, v_ad, i_ad = curve_process(k)
+        if ret:
+            for c in xrange(0, len(i_ad) ):
+                i0, i1, dummy1, dummy = struct.pack("i", i_ad[c])
+                v0, v1, dummy2, dummy = struct.pack("i", v_ad[c])
+                fiv.write('\x0F')
+                fiv.write(i1)
+                fiv.write(i0)
+                fiv.write(v1)
+                fiv.write(v0)
+                checksum = ord(i0) + ord(i1) + ord(v0) + ord(v1)
+                fiv.write( struct.pack("i", checksum)[0] )                
+
+except:
+    print 'Possivelmente a curva estourou, verifique'
+
+fiv.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
