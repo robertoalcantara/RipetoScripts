@@ -1,4 +1,4 @@
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
@@ -19,22 +19,25 @@ def closest(sorted_dict, key):
 
 def curve_process( data ):
         #print '.',
-        #print len(data)
+        #print data
 
         vl = []
         il = []
         pl = []
         for i in data:
-            if i[1] < 0.01:
+            if i[1] < 0.001: # or i[1] > 2:
                 continue
             il.append( i[1] )
             vl.append( i[0] )
             pl.append( i[1] * i[0] / 1000 )
             # print (str(i[1]) + "," + str(i[0]))  #CSV OUTPUT Curve
-        if len( il ) < 5:
-            #print "Nao possui amostras suficiente"
-            return True, np.arange(0, 4096, 1), np.arange(0, 4096, 1) 
-
+        if len( il ) < 20:
+            print "Nao possui amostras suficiente. Curva ignorada!"
+            return False, [], []
+            #return True, np.arange(0, 4096, 1), np.arange(0, 4096, 1) 
+        il.append( il[ len(il)-1 ])
+        vl.append(0)
+    
 
         coef = np.polyfit(il,vl,3) #6
 
@@ -44,9 +47,9 @@ def curve_process( data ):
         #calcular o erro
         err_v = np.array(vl) - np.array(vl_calc)
         #nao necessario err_v[0] = 0 #amostra 0 eh especial pq representa a saida a vazio
-        #print "V Erro medio: " + str ( err_v.mean() ) + "mV"
-        #print "V Desvio padrao erro: " + str ( err_v.std() ) + "mV"
-        #print "-------------------"
+        print "V Erro medio: " + str ( err_v.mean() ) + "mV"
+        print "V Desvio padrao erro: " + str ( err_v.std() ) + "mV"
+        print "-------------------"
 
         ### curva calculada:
         MAX_VOUT = 5004.5 #mV  DAC MAX
@@ -84,7 +87,8 @@ def curve_process( data ):
         v_ad = []
 
         for v in v_calc:
-            if v > 2000:
+            if v > 6000:
+                print "tensao muito alta, possivelmente estourou. Curva de zeros."
                 return True, np.arange(0, 4096, 1), np.arange(0, 4096, 1) 
             v_ad.append( int(v / VLSB_SIZE) )
 
@@ -95,33 +99,32 @@ def curve_process( data ):
         for cnt in range (0, len(data)):
             time.append(tcnt)
             tcnt = tcnt + 0.00001976 #50.61 kHz
-        #print "Numero itens na curva: " + str( len(data) )
+        print "Numero itens na curva: " + str( len(data) )
 
-        #show_graph( vl, il, pl, vl_calc, pl_calc, v_calc, i_calc, p_calc, v_ad, i_ad  )
+        show_graph( vl, il, pl, vl_calc, pl_calc, v_calc, i_calc, p_calc, v_ad, i_ad  )
         return True, v_ad, i_ad
 
 def show_graph(vl, il, pl, vl_calc,pl_calc, v_calc, i_calc, p_calc, v_ad, i_ad ):
-        #fig, ax1 = plt.subplots()
-        #ax1.grid(True)
+        fig, ax1 = plt.subplots()
+        ax1.grid(True)
   
-        '''ax1.plot(il,vl, 'bx')
+        ax1.plot(il,vl, 'bx')
 
-        ax1.set_xlabel('Current (mA)')
+        ax1.set_xlabel('Corrente (mA)')
         ax1.tick_params('y', colors='b')
-        ax1.set_ylabel("Voltage (mV)")
+        ax1.set_ylabel("Tensao (mV)")
 
-        #ax1.plot(il, vl_calc, 'bx')
+        #ax1.plot(il, vl_calc, 'gx')
         ax2 = ax1.twinx()
         ax2.tick_params('y', colors='r')
 
-        ax2.plot(il,pl_calc, 'r-')
-        ax2.set_ylabel('Power (mW)' )
+        ax2.plot(il,pl_calc, 'rx')
+        ax2.set_ylabel('Potencia (mW)' )
         ax2.grid(False)
 
         #ax2.plot(il, pl_calc, 'r-')
-        fig.show()'''
-
-        '''
+        fig.show()
+        
         fig2,bx1 = plt.subplots()
         bx1.grid(True)
         bx1.plot(i_calc, v_calc, 'b-')
@@ -134,7 +137,6 @@ def show_graph(vl, il, pl, vl_calc,pl_calc, v_calc, i_calc, p_calc, v_ad, i_ad )
         bx2.set_ylabel("Power (mW)")
         bx2.grid(False)
         fig2.show()
-        '''
         
         fig3,cx1 = plt.subplots()
         cx1.grid(True)
@@ -271,7 +273,7 @@ while True:
             cnt = cnt + 1
 
 
-#print "Numero amostras: " + str(len(data))
+print "Numero amostras: " + str(len(data))
 
 curve_idx = -1
 aux = not data_trace1[0]
@@ -285,15 +287,18 @@ for t in data_trace1:
         curve_idx = curve_idx + 1
         cnt_byte_curve = 0;
         curves.append([])
-        #print "Curva " + str(curve_idx)
+        print "Curva " + str(curve_idx)
     
     curves[curve_idx].append( data[cnt_byte] )
   
     cnt_byte = cnt_byte+1   
     cnt_byte_curve = cnt_byte_curve+1       
 
+    if len(curves)==50:
+        print "Atingido o limite de curvas"
+        break
 
-print "Numero de Curvas: " + str(len(curves))
+print "Numero de Curvas armazenadas: " + str(len(curves))
 
 '''
 #CSV file of surface
@@ -310,9 +315,17 @@ for k in curves:
 
         fcsv.write(l)
 '''
+#meio estupido, mas vai... pegando o numero de curvas na superficie real (processada)
+
+cnt = 0
+for k in curves:
+        ret, v_ad, i_ad = curve_process(k)
+        if ret:
+            cnt = cnt+1
+
 
 fiv = open("ivsurface.bin", 'wb')
-num0, num1, dummy1, dummy2 = struct.pack("i", len(curves) )
+num0, num1, dummy1, dummy2 = struct.pack("i", cnt) # len(curves) )
 fiv.write(num1)
 fiv.write(num0)
 
@@ -322,8 +335,7 @@ fiv.write(num2)
 fiv.write(num1)
 fiv.write(num0)
 
-try:
-    for k in curves:
+for k in curves:
         ret, v_ad, i_ad = curve_process(k)
         if ret:
             for c in xrange(0, len(i_ad) ):
@@ -337,11 +349,8 @@ try:
                 checksum = ord(i0) + ord(i1) + ord(v0) + ord(v1)
                 fiv.write( struct.pack("i", checksum)[0] )                
 
-except:
-    print 'Possivelmente a curva estourou, verifique'
 
 fiv.close()
-
 
 
 
